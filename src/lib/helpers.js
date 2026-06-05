@@ -1,4 +1,4 @@
-import { CFG_STORAGE_KEY, DEFAULT_BASE_URL, DEFAULT_API_KEY } from '../config/index.js';
+import { CFG_STORAGE_KEY, DEFAULT_BASE_URL, DEFAULT_API_KEY, APP_URL } from '../config/index.js';
 
 // Env vars always win — they are the authoritative source.
 // localStorage is only used as a fallback when an env var is not set.
@@ -23,8 +23,10 @@ export function getBaseUrl() {
   return getCfg().baseUrl.replace(/\/+$/, '');
 }
 
+// Short links go through /go/:id so the wake-up page can intercept cold starts.
 export function shortUrl(id) {
-  return getBaseUrl() + '/' + id;
+  const base = APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+  return `${base}/go/${id}`;
 }
 
 export function genId(n = 8) {

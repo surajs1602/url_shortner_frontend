@@ -11,6 +11,17 @@ import { Store } from '../lib/api.js';
 import { statusOf, shortUrl, fmtDate } from '../lib/helpers.js';
 import { getBaseUrl } from '../lib/helpers.js';
 
+// Strips protocol/www and truncates long paths so URLs read cleanly in the card.
+function prettyUrl(raw) {
+  try {
+    const u       = new URL(raw);
+    const display = u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, '') + u.search;
+    return display.length > 60 ? display.slice(0, 58) + '…' : display;
+  } catch {
+    return raw;
+  }
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skeleton() {
   return (
@@ -115,8 +126,8 @@ function LinkCard({ link, onAnalytics, onQR, onDelete }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, color: 'var(--ink-soft)', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--mono)' }}>
             <Icon name="arrow" size={13} stroke={2.4} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
-              {link.redirectUrl}
+            <span title={link.redirectUrl} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
+              {prettyUrl(link.redirectUrl)}
             </span>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { ToastProvider } from './components/ui/Toast.jsx';
 import ShortenPage from './pages/ShortenPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
+import WakeUpPage from './pages/WakeUpPage.jsx';
 import { APP_NAME } from './config/index.js';
 
 function AppInner() {
@@ -15,6 +16,7 @@ function AppInner() {
           <Route path="/"              element={<ShortenPage />} />
           <Route path="/dashboard"     element={<DashboardPage />} />
           <Route path="/analytics/:id" element={<AnalyticsPage />} />
+          <Route path="/go/:id"        element={<WakeUpPage />} />
           <Route path="*"              element={<ShortenPage />} />
         </Routes>
       </main>

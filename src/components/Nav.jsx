@@ -22,13 +22,14 @@ function HealthButton() {
   const resolve = (ok, errStatus) =>
     ok ? 'ok' : errStatus === 0 ? 'unknown' : 'error';
 
-  // Silent check — updates status only, never touches the cooldown
+  // Silent check — updates status only, never touches the cooldown.
+  // Failures stay 'unknown' (grey) — only a manual click ever shows 'error'.
   const silentCheck = () => {
     let alive = true;
     setStatus('checking');
     Store.health()
       .then(() => { if (alive) setStatus('ok'); })
-      .catch(e  => { if (alive) setStatus(resolve(false, e.status)); });
+      .catch(() => { if (alive) setStatus('unknown'); });
     return () => { alive = false; };
   };
 

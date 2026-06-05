@@ -85,6 +85,22 @@ function ResultCard({ result, onAgain }) {
   );
 }
 
+function Pill() {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7,
+      background: 'var(--blue)', color: '#fff', borderRadius: 99,
+      padding: '7px 15px', fontWeight: 800, fontSize: 12.5,
+      fontFamily: 'var(--mono)', border: '2px solid var(--ink)',
+      marginBottom: 20, whiteSpace: 'nowrap',
+      boxShadow: '0 3px 0 var(--ink)',
+      animation: 'si-pendulum 2.6s ease-in-out infinite',
+    }}>
+      <Icon name="zap" size={14} stroke={2.6} />tiny links, big reach
+    </div>
+  );
+}
+
 export default function ShortenPage() {
   const [url,       setUrl]       = useState('');
   const [adv,       setAdv]       = useState(false);
@@ -135,15 +151,7 @@ export default function ShortenPage() {
           <>
             {/* Hero heading */}
             <div style={{ textAlign: 'center', marginBottom: 34 }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                background: 'var(--blue)', color: '#fff', borderRadius: 99,
-                padding: '7px 15px', fontWeight: 800, fontSize: 12.5,
-                fontFamily: 'var(--mono)', transform: 'rotate(-1.5deg)',
-                border: '2px solid var(--ink)', marginBottom: 20, whiteSpace: 'nowrap',
-              }}>
-                <Icon name="zap" size={14} stroke={2.6} />tiny links, big reach
-              </div>
+              <Pill />
               <h1 style={{
                 fontSize: 'clamp(40px, 7vw, 64px)', lineHeight: 0.95,
                 fontWeight: 800, letterSpacing: '-0.045em', margin: 0,

@@ -185,18 +185,18 @@ export const Store = {
   async health() {
     const base = getBaseUrl();
     if (!base) throw { status: 0, message: 'No base URL configured' };
-    let res;
+    const { apiKey } = getCfg();
     try {
-      res = await fetch(base + HEALTH_PATH);
+      // Any HTTP response (200, 401, 429…) means the service is running.
+      // Only a network error means it's actually unreachable.
+      await fetch(`${base}${API_URL_PATH}`, {
+        headers: { 'x-api-key': apiKey || '' },
+      });
     } catch (networkErr) {
-      console.error('[ShortIt] Health check network error:', networkErr, '— URL:', base + HEALTH_PATH);
+      console.error('[ShortIt] Health check network error:', networkErr.message);
       throw { status: undefined, message: networkErr.message || 'Network error' };
     }
-    if (!res.ok) {
-      console.error('[ShortIt] Health check failed:', res.status, base + HEALTH_PATH);
-      throw { status: res.status, message: `Health check failed (${res.status})` };
-    }
-    return await res.json();
+    return { status: 'ok' };
   },
 
   resetDemo() {
