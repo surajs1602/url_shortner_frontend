@@ -4,12 +4,14 @@ import { Store } from '../lib/api.js';
 import { getBaseUrl } from '../lib/helpers.js';
 import Logo from '../components/ui/Logo.jsx';
 import Icon from '../components/ui/Icon.jsx';
+import { useBreakpoint } from '../lib/hooks.js';
 
 const POLL_MS      = 3000;
 const TIMEOUT_SECS = 90;
 
 export default function WakeUpPage() {
-  const { id } = useParams();
+  const { id }       = useParams();
+  const { isMobile } = useBreakpoint();
 
   // 'waiting' | 'redirecting' | 'timeout'
   const [state,   setState]   = useState('waiting');
@@ -64,7 +66,7 @@ export default function WakeUpPage() {
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: 'var(--cream)', padding: 24,
+      background: 'var(--cream)', padding: isMobile ? 16 : 24,
       backgroundImage:
         'radial-gradient(circle at 15% 20%, rgba(217,119,87,0.07), transparent 40%),' +
         'radial-gradient(circle at 85% 80%, rgba(90,130,210,0.07), transparent 40%)',
@@ -77,7 +79,7 @@ export default function WakeUpPage() {
 
         <div style={{
           background: '#fff', border: '2.5px solid var(--ink)',
-          borderRadius: 24, padding: '36px 30px', width: '100%',
+          borderRadius: 24, padding: isMobile ? '28px 20px' : '36px 30px', width: '100%',
           boxShadow: '0 8px 0 var(--ink)', textAlign: 'center',
           animation: 'si-pop .28s cubic-bezier(.2,.9,.3,1.2)',
         }}>

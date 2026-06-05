@@ -1,12 +1,14 @@
 import { useEffect, useRef } from 'react';
 import Icon from '../ui/Icon.jsx';
+import { useBreakpoint } from '../../lib/hooks.js';
 
 // Selector for all keyboard-reachable elements — used to trap focus inside the modal.
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export default function Modal({ title, onClose, children, width = 480 }) {
-  const panelRef  = useRef(null);
-  const titleId   = useRef(`modal-title-${Math.random().toString(36).slice(2)}`);
+  const panelRef     = useRef(null);
+  const titleId      = useRef(`modal-title-${Math.random().toString(36).slice(2)}`);
+  const { isMobile } = useBreakpoint();
 
   useEffect(() => {
     const panel = panelRef.current;
@@ -44,7 +46,7 @@ export default function Modal({ title, onClose, children, width = 480 }) {
         position: 'fixed', inset: 0,
         background: 'rgba(42,35,32,.45)', backdropFilter: 'blur(3px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 900, padding: 24,
+        zIndex: 900, padding: isMobile ? 12 : 24,
         animation: 'si-fade .14s ease',
       }}
     >
