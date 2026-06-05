@@ -1,4 +1,4 @@
-import { CFG_STORAGE_KEY, DEFAULT_BASE_URL, DEFAULT_API_KEY, APP_URL } from '../config/index.js';
+import { CFG_STORAGE_KEY, DEFAULT_BASE_URL, DEFAULT_API_KEY } from '../config/index.js';
 
 // Env vars always win — they are the authoritative source.
 // localStorage is only used as a fallback when an env var is not set.
@@ -14,11 +14,6 @@ export function getCfg() {
   }
 }
 
-export function setCfg(c) {
-  localStorage.setItem(CFG_STORAGE_KEY, JSON.stringify(c));
-  window.dispatchEvent(new Event('shortit-cfg'));
-}
-
 export function isLive() {
   const c = getCfg();
   return !!(c.baseUrl && c.apiKey);
@@ -28,11 +23,8 @@ export function getBaseUrl() {
   return getCfg().baseUrl.replace(/\/+$/, '');
 }
 
-// Short links go through the frontend /go/:id page so the service-wake-up
-// loading screen can show before the backend redirect fires.
 export function shortUrl(id) {
-  const base = APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/go/${id}`;
+  return getBaseUrl() + '/' + id;
 }
 
 export function genId(n = 8) {

@@ -2,7 +2,6 @@ import {
   API_URL_PATH,
   API_ANALYTICS_PATH,
   HEALTH_PATH,
-  RESOLVE_PATH,
   MOCK_STORAGE_KEY,
 } from '../config/index.js';
 import { getCfg, isLive, getBaseUrl, genId, isValidUrl, wait } from './helpers.js';
@@ -181,34 +180,6 @@ export const Store = {
     const all = mockAll().filter(x => x.shortId !== id);
     mockSave(all);
     return { status: 'Success', message: 'URL deleted' };
-  },
-
-  // Resolve a short ID to its destination URL.
-  // No API key required — public endpoint, same auth level as the redirect.
-  // Throws { status, message, permanent: true } for 404/410 (don't retry).
-  // Throws { status, message, permanent: false } for network/5xx (keep polling).
-  async resolve(id, ref = '') {
-    const base = getBaseUrl();
-    if (!base) throw { status: 0, message: 'No base URL configured', permanent: false };
-
-    const qs  = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-    let res;
-    try {
-      res = await fetch(`${base}${RESOLVE_PATH}/${encodeURIComponent(id)}${qs}`);
-    } catch (networkErr) {
-      console.error('[ShortIt] Resolve network error:', networkErr.message);
-      throw { status: undefined, message: 'Service is starting up…', permanent: false };
-    }
-
-    let data = null;
-    try { data = await res.json(); } catch {}
-
-    if (!res.ok) {
-      const permanent = res.status === 404 || res.status === 410;
-      const message   = (data && (data.error || data.err)) || `Request failed (${res.status})`;
-      throw { status: res.status, message, permanent };
-    }
-    return data; // { url, shortId }
   },
 
   async health() {
