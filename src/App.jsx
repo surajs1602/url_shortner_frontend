@@ -1,24 +1,42 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Nav from './components/Nav.jsx';
 import { ToastProvider } from './components/ui/Toast.jsx';
+// ShortenPage is the landing route — keep it eager so first paint is instant.
 import ShortenPage from './pages/ShortenPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
-import AnalyticsPage from './pages/AnalyticsPage.jsx';
-import WakeUpPage from './pages/WakeUpPage.jsx';
 import { APP_NAME } from './config/index.js';
+
+// Lazy-load secondary pages so they're split into separate chunks.
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
+const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage.jsx'));
+const WakeUpPage    = lazy(() => import('./pages/WakeUpPage.jsx'));
+
+// Minimal fallback — matches the cream background so there's no flash of white.
+function PageFallback() {
+  return (
+    <div style={{
+      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: 'var(--ink-faint)', fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13,
+    }}>
+      Loading…
+    </div>
+  );
+}
 
 function AppInner() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Nav />
       <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-        <Routes>
-          <Route path="/"              element={<ShortenPage />} />
-          <Route path="/dashboard"     element={<DashboardPage />} />
-          <Route path="/analytics/:id" element={<AnalyticsPage />} />
-          <Route path="/go/:id"        element={<WakeUpPage />} />
-          <Route path="*"              element={<ShortenPage />} />
-        </Routes>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/"              element={<ShortenPage />} />
+            <Route path="/dashboard"     element={<DashboardPage />} />
+            <Route path="/analytics/:id" element={<AnalyticsPage />} />
+            <Route path="/go/:id"        element={<WakeUpPage />} />
+            <Route path="*"              element={<ShortenPage />} />
+          </Routes>
+        </Suspense>
       </main>
       <footer style={{
         textAlign: 'center', padding: '20px',

@@ -1,3 +1,4 @@
+// All paths are from an internal whitelist — no user input reaches dangerouslySetInnerHTML.
 const PATHS = {
   link:     '<path d="M9 13a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 11a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>',
   copy:     '<rect x="9" y="9" width="11" height="11" rx="2.5"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
@@ -31,6 +32,9 @@ export default function Icon({ name, size = 18, stroke = 2, style }) {
       strokeWidth={stroke}
       strokeLinecap="round"
       strokeLinejoin="round"
+      // Icons are decorative — label is on the parent button/element.
+      aria-hidden="true"
+      focusable="false"
       style={style}
       dangerouslySetInnerHTML={{ __html: p }}
     />

@@ -8,8 +8,7 @@ import { Field, inputStyle } from '../components/ui/Field.jsx';
 import QR from '../components/QR.jsx';
 import { useToast } from '../components/ui/Toast.jsx';
 import { Store } from '../lib/api.js';
-import { isValidUrl, shortUrl, fmtDate } from '../lib/helpers.js';
-import { getBaseUrl } from '../lib/helpers.js';
+import { isValidUrl, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
 
 function Blobs() {
   return (
@@ -190,6 +189,8 @@ export default function ShortenPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, minHeight: 22 }}>
               <button
                 onClick={() => setAdv(a => !a)}
+                aria-expanded={adv}
+                aria-controls="advanced-options"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -208,10 +209,13 @@ export default function ShortenPage() {
 
             {/* Advanced options */}
             {adv && (
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
-                marginTop: 16, animation: 'si-slide .18s ease',
-              }}>
+              <div
+                id="advanced-options"
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
+                  marginTop: 16, animation: 'si-slide .18s ease',
+                }}
+              >
                 <Field label="Custom slug" hint="optional">
                   <div style={{
                     display: 'flex', alignItems: 'center',

@@ -8,8 +8,7 @@ import { useToast } from '../components/ui/Toast.jsx';
 import ConfirmDialog from '../components/modals/ConfirmDialog.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { statusOf, shortUrl, fmtDate } from '../lib/helpers.js';
-import { getBaseUrl } from '../lib/helpers.js';
+import { statusOf, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
 
 // Strips protocol/www and truncates long paths so URLs read cleanly in the card.
 function prettyUrl(raw) {
@@ -81,9 +80,11 @@ function IconBtn({ name, title, onClick, copyValue, accent, danger }) {
   const color = done ? 'var(--blue)' : danger ? 'var(--coral)' : accent ? 'var(--ink)' : 'var(--ink-soft)';
 
   return (
+    // aria-label mirrors title so screen readers announce the action, not the icon name.
     <button
       onClick={handle}
       title={title}
+      aria-label={title}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -237,6 +238,7 @@ export default function DashboardPage() {
               value={q}
               onChange={e => setQ(e.target.value)}
               placeholder="Search links…"
+              aria-label="Search your links"
               style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, fontFamily: 'var(--sans)' }}
             />
           </div>

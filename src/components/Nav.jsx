@@ -72,6 +72,7 @@ function HealthButton() {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       title={disabled ? `Next check available in ${cooldown}s` : 'Check backend health'}
+      aria-label={`Backend status: ${label}${disabled ? `, retry in ${cooldown}s` : ''}`}
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
         background: '#fff', border: '2.5px solid var(--ink)', borderRadius: 99,

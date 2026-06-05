@@ -22,7 +22,8 @@ async function apiFetch(path, opts = {}) {
   });
 
   let data = null;
-  try { data = await res.json(); } catch {}
+  // Log parse failures so they surface in devtools without breaking the error-status flow.
+  try { data = await res.json(); } catch (e) { console.warn('[ShortIt] Non-JSON response body:', e.message); }
 
   if (!res.ok) {
     const msg =

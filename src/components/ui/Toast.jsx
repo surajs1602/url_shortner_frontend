@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useState } from 'react';
 import Icon from './Icon.jsx';
 
-const ToastCtx = createContext(() => {});
+// Throw at call-site when useToast is used outside its provider instead of silently no-oping.
+const ToastCtx = createContext(null);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -15,11 +16,17 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={push}>
       {children}
-      <div style={{
-        position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-        display: 'flex', flexDirection: 'column', gap: 10, zIndex: 1000, alignItems: 'center',
-        pointerEvents: 'none',
-      }}>
+      {/* aria-live ensures screen readers announce each new toast automatically. */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="false"
+        style={{
+          position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+          display: 'flex', flexDirection: 'column', gap: 10, zIndex: 1000,
+          alignItems: 'center', pointerEvents: 'none',
+        }}
+      >
         {toasts.map(t => (
           <div key={t.id} className="si-toast" style={{
             display: 'flex', alignItems: 'center', gap: 9,
@@ -42,5 +49,7 @@ export function ToastProvider({ children }) {
 }
 
 export function useToast() {
-  return useContext(ToastCtx);
+  const ctx = useContext(ToastCtx);
+  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
+  return ctx;
 }
