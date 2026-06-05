@@ -8,8 +8,7 @@ import { Field, inputStyle } from '../components/ui/Field.jsx';
 import QR from '../components/QR.jsx';
 import { useToast } from '../components/ui/Toast.jsx';
 import { Store } from '../lib/api.js';
-import { isValidUrl, shortUrl, fmtDate } from '../lib/helpers.js';
-import { getBaseUrl } from '../lib/helpers.js';
+import { isValidUrl, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
 
 function Blobs() {
   return (
@@ -85,6 +84,22 @@ function ResultCard({ result, onAgain }) {
   );
 }
 
+function Pill() {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7,
+      background: 'var(--blue)', color: '#fff', borderRadius: 99,
+      padding: '7px 15px', fontWeight: 800, fontSize: 12.5,
+      fontFamily: 'var(--mono)', border: '2px solid var(--ink)',
+      marginBottom: 20, whiteSpace: 'nowrap',
+      boxShadow: '0 3px 0 var(--ink)',
+      animation: 'si-pendulum 2.6s ease-in-out infinite',
+    }}>
+      <Icon name="zap" size={14} stroke={2.6} />tiny links, big reach
+    </div>
+  );
+}
+
 export default function ShortenPage() {
   const [url,       setUrl]       = useState('');
   const [adv,       setAdv]       = useState(false);
@@ -135,15 +150,7 @@ export default function ShortenPage() {
           <>
             {/* Hero heading */}
             <div style={{ textAlign: 'center', marginBottom: 34 }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-                background: 'var(--blue)', color: '#fff', borderRadius: 99,
-                padding: '7px 15px', fontWeight: 800, fontSize: 12.5,
-                fontFamily: 'var(--mono)', transform: 'rotate(-1.5deg)',
-                border: '2px solid var(--ink)', marginBottom: 20, whiteSpace: 'nowrap',
-              }}>
-                <Icon name="zap" size={14} stroke={2.6} />tiny links, big reach
-              </div>
+              <Pill />
               <h1 style={{
                 fontSize: 'clamp(40px, 7vw, 64px)', lineHeight: 0.95,
                 fontWeight: 800, letterSpacing: '-0.045em', margin: 0,
@@ -182,6 +189,8 @@ export default function ShortenPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, minHeight: 22 }}>
               <button
                 onClick={() => setAdv(a => !a)}
+                aria-expanded={adv}
+                aria-controls="advanced-options"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
                   background: 'none', border: 'none', cursor: 'pointer',
@@ -200,10 +209,13 @@ export default function ShortenPage() {
 
             {/* Advanced options */}
             {adv && (
-              <div style={{
-                display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
-                marginTop: 16, animation: 'si-slide .18s ease',
-              }}>
+              <div
+                id="advanced-options"
+                style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
+                  marginTop: 16, animation: 'si-slide .18s ease',
+                }}
+              >
                 <Field label="Custom slug" hint="optional">
                   <div style={{
                     display: 'flex', alignItems: 'center',

@@ -13,6 +13,11 @@ export const APP_TAGLINE = 'tiny links, big reach';
 export const DEFAULT_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 export const DEFAULT_API_KEY  = import.meta.env.VITE_API_KEY      || '';
 
+// Frontend public URL — used to build shareable /go/:id short links.
+// Set VITE_APP_URL in .env to your deployed frontend (e.g. https://shortit.vercel.app).
+// Falls back to window.location.origin at runtime so local dev works without config.
+export const APP_URL = import.meta.env.VITE_APP_URL || '';
+
 // localStorage keys
 export const CFG_STORAGE_KEY  = 'shortit_cfg_v1';  // { baseUrl, apiKey }
 export const MOCK_STORAGE_KEY = 'shortit_mock_v1'; // demo seed data

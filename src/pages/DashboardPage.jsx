@@ -8,8 +8,18 @@ import { useToast } from '../components/ui/Toast.jsx';
 import ConfirmDialog from '../components/modals/ConfirmDialog.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { statusOf, shortUrl, fmtDate } from '../lib/helpers.js';
-import { getBaseUrl } from '../lib/helpers.js';
+import { statusOf, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+
+// Strips protocol/www and truncates long paths so URLs read cleanly in the card.
+function prettyUrl(raw) {
+  try {
+    const u       = new URL(raw);
+    const display = u.hostname.replace(/^www\./, '') + u.pathname.replace(/\/$/, '') + u.search;
+    return display.length > 60 ? display.slice(0, 58) + '…' : display;
+  } catch {
+    return raw;
+  }
+}
 
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skeleton() {
@@ -70,9 +80,11 @@ function IconBtn({ name, title, onClick, copyValue, accent, danger }) {
   const color = done ? 'var(--blue)' : danger ? 'var(--coral)' : accent ? 'var(--ink)' : 'var(--ink-soft)';
 
   return (
+    // aria-label mirrors title so screen readers announce the action, not the icon name.
     <button
       onClick={handle}
       title={title}
+      aria-label={title}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
       style={{
@@ -115,8 +127,8 @@ function LinkCard({ link, onAnalytics, onQR, onDelete }) {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, color: 'var(--ink-soft)', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--mono)' }}>
             <Icon name="arrow" size={13} stroke={2.4} style={{ flexShrink: 0 }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
-              {link.redirectUrl}
+            <span title={link.redirectUrl} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
+              {prettyUrl(link.redirectUrl)}
             </span>
           </div>
         </div>
@@ -226,6 +238,7 @@ export default function DashboardPage() {
               value={q}
               onChange={e => setQ(e.target.value)}
               placeholder="Search links…"
+              aria-label="Search your links"
               style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, fontFamily: 'var(--sans)' }}
             />
           </div>
