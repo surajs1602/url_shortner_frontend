@@ -4,7 +4,7 @@ import Nav from './components/Nav.jsx';
 import { ToastProvider } from './components/ui/Toast.jsx';
 // ShortenPage is the landing route — keep it eager so first paint is instant.
 import ShortenPage from './pages/ShortenPage.jsx';
-import { APP_NAME } from './config/index.js';
+import { APP_NAME, AUTHOR_NAME, AUTHOR_URL } from './config/index.js';
 
 // Lazy-load secondary pages so they're split into separate chunks.
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
@@ -42,7 +42,18 @@ function AppInner() {
         textAlign: 'center', padding: '20px',
         color: 'var(--ink-faint)', fontSize: 12.5, fontWeight: 700, fontFamily: 'var(--mono)',
       }}>
-        {APP_NAME} · made for tiny links
+        {APP_NAME} · made for tiny links · built by{' '}
+        <a
+          href={AUTHOR_URL}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            color: 'var(--coral)', textDecoration: 'none', fontWeight: 800,
+            borderBottom: '1.5px solid currentColor', paddingBottom: 1,
+          }}
+        >
+          {AUTHOR_NAME}
+        </a>
       </footer>
     </div>
   );

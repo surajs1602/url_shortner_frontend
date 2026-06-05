@@ -3,8 +3,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // App identity
-export const APP_NAME    = 'ShortIt';
-export const APP_TAGLINE = 'tiny links, big reach';
+export const APP_NAME       = 'ShortIt';
+export const APP_TAGLINE    = 'tiny links, big reach';
+export const AUTHOR_NAME    = 'Suraj Sharma';
+export const AUTHOR_URL     = 'https://suraj-sharma.me';
 
 // Backend — set both in your .env file.
 // VITE_API_BASE_URL : your backend URL (non-secret, just a URL)

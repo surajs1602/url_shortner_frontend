@@ -9,6 +9,7 @@ import ConfirmDialog from '../components/modals/ConfirmDialog.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
 import { statusOf, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { useBreakpoint } from '../lib/hooks.js';
 
 // Strips protocol/www and truncates long paths so URLs read cleanly in the card.
 function prettyUrl(raw) {
@@ -102,52 +103,101 @@ function IconBtn({ name, title, onClick, copyValue, accent, danger }) {
 
 // ── Link card ─────────────────────────────────────────────────────────────────
 function LinkCard({ link, onAnalytics, onQR, onDelete }) {
-  const clicks = link.visitHistory ? link.visitHistory.length : 0;
-  const st     = statusOf(link);
-  const full   = shortUrl(link.shortId);
-  const base   = getBaseUrl().replace(/^https?:\/\//, '');
+  const clicks                 = link.visitHistory ? link.visitHistory.length : 0;
+  const st                     = statusOf(link);
+  const full                   = shortUrl(link.shortId);
+  const base                   = getBaseUrl().replace(/^https?:\/\//, '');
+  const { isMobile, isTablet } = useBreakpoint();
+
+  // Actions are the same at every breakpoint.
+  const Actions = () => (
+    <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
+      <IconBtn name="copy"  title="Copy"      copyValue={full} />
+      <IconBtn name="qr"    title="QR code"   onClick={onQR} />
+      <IconBtn name="chart" title="Analytics" onClick={onAnalytics} accent />
+      <IconBtn name="trash" title="Delete"    onClick={onDelete} danger />
+    </div>
+  );
 
   return (
     <Card pad={0} hover style={{ overflow: 'hidden' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '18px 22px', flexWrap: 'wrap' }}>
-        <div style={{ flexShrink: 0 }}>
-          <Sparkline history={link.visitHistory || []} />
-        </div>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <a
-              href={full}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: 19, fontWeight: 800, letterSpacing: '-0.02em', textDecoration: 'none', color: 'var(--ink)' }}
-            >
-              {base}/<span style={{ color: 'var(--coral)' }}>{link.shortId}</span>
-            </a>
-            <StatusPill status={st} size="sm" />
+      <div style={{ padding: isMobile ? '14px 16px' : '16px 20px' }}>
+
+        {/* ── Row 1: sparkline + info + actions ── */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* Sparkline hidden at tablet and below */}
+          {!isTablet && (
+            <div style={{ flexShrink: 0 }}>
+              <Sparkline history={link.visitHistory || []} />
+            </div>
+          )}
+
+          {/* URL info — minWidth:0 + overflow:hidden prevents text blowing out the card */}
+          <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <a
+                href={full}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  fontSize: isMobile ? 15 : 17, fontWeight: 800, letterSpacing: '-0.02em',
+                  textDecoration: 'none', color: 'var(--ink)',
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                }}
+              >
+                {base}/<span style={{ color: 'var(--coral)' }}>{link.shortId}</span>
+              </a>
+              <StatusPill status={st} size="sm" />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, color: 'var(--ink-soft)', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--mono)' }}>
+              <Icon name="arrow" size={12} stroke={2.4} style={{ flexShrink: 0 }} />
+              <span title={link.redirectUrl} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {prettyUrl(link.redirectUrl)}
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, color: 'var(--ink-soft)', fontSize: 13.5, fontWeight: 600, fontFamily: 'var(--mono)' }}>
-            <Icon name="arrow" size={13} stroke={2.4} style={{ flexShrink: 0 }} />
-            <span title={link.redirectUrl} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 420 }}>
-              {prettyUrl(link.redirectUrl)}
-            </span>
+
+          {/* Desktop: meta + actions inline. Tablet+mobile: actions only, meta moves to row 2. */}
+          {!isTablet ? (
+            <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ textAlign: 'center', minWidth: 48 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontFamily: 'var(--mono)' }}>
+                  {clicks.toLocaleString()}
+                </div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', marginTop: 2 }}>clicks</div>
+              </div>
+              <div style={{ textAlign: 'right', minWidth: 88 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)' }}>created</div>
+                <div style={{ fontSize: 13, fontWeight: 700, marginTop: 2 }}>{fmtDate(link.createdAt)}</div>
+              </div>
+              <Actions />
+            </div>
+          ) : (
+            <Actions />
+          )}
+        </div>
+
+        {/* ── Row 2 (tablet + mobile only): clicks + created ── */}
+        {isTablet && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 20,
+            marginTop: 10, paddingTop: 10,
+            borderTop: '1.5px solid rgba(42,35,32,.08)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+              <span style={{ fontSize: 20, fontWeight: 800, fontFamily: 'var(--mono)', letterSpacing: '-0.03em' }}>
+                {clicks.toLocaleString()}
+              </span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)' }}>clicks</span>
+            </div>
+            {!isMobile && (
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                Created {fmtDate(link.createdAt)}
+              </div>
+            )}
           </div>
-        </div>
-        <div style={{ textAlign: 'center', flexShrink: 0, minWidth: 64 }}>
-          <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1, fontFamily: 'var(--mono)' }}>
-            {clicks.toLocaleString()}
-          </div>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)', marginTop: 3 }}>clicks</div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 90 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)' }}>created</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, marginTop: 2 }}>{fmtDate(link.createdAt)}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 7, flexShrink: 0 }}>
-          <IconBtn name="copy"  title="Copy"      copyValue={full} />
-          <IconBtn name="qr"    title="QR code"   onClick={onQR} />
-          <IconBtn name="chart" title="Analytics" onClick={onAnalytics} accent />
-          <IconBtn name="trash" title="Delete"    onClick={onDelete} danger />
-        </div>
+        )}
       </div>
     </Card>
   );
@@ -175,8 +225,9 @@ function EmptyState({ q, onNew }) {
 
 // ── Dashboard page ────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const navigate  = useNavigate();
-  const toast     = useToast();
+  const navigate     = useNavigate();
+  const toast        = useToast();
+  const { isMobile } = useBreakpoint();
   const [links,   setLinks]   = useState(null);
   const [error,   setError]   = useState('');
   const [q,       setQ]       = useState('');
@@ -211,11 +262,15 @@ export default function DashboardPage() {
   const totalClicks = (links || []).reduce((s, l) => s + (l.visitHistory ? l.visitHistory.length : 0), 0);
 
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', padding: '12px 32px 64px', boxSizing: 'border-box' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 26 }}>
-        <div style={{ flexShrink: 0 }}>
-          <h1 style={{ fontSize: 38, fontWeight: 800, letterSpacing: '-0.04em', margin: 0, whiteSpace: 'nowrap' }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', padding: isMobile ? '12px 16px 48px' : '12px 32px 64px', boxSizing: 'border-box' }}>
+      {/* Header — stacks on mobile */}
+      <div style={{
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'flex-end',
+        justifyContent: 'space-between', gap: 14, marginBottom: 26,
+      }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? 28 : 38, fontWeight: 800, letterSpacing: '-0.04em', margin: 0 }}>
             Your links
           </h1>
           <p style={{ color: 'var(--ink-soft)', fontWeight: 700, margin: '6px 0 0', fontSize: 15 }}>
@@ -227,11 +282,12 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+        {/* On mobile: search + button stack vertically so the button never gets squeezed. */}
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10 }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 9, background: '#fff',
             border: '2.5px solid var(--ink)', borderRadius: 14, padding: '10px 14px',
-            boxShadow: '0 3px 0 rgba(42,35,32,.18)', width: 230,
+            boxShadow: '0 3px 0 rgba(42,35,32,.18)', width: isMobile ? '100%' : 230,
           }}>
             <Icon name="search" size={17} stroke={2.3} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
             <input
@@ -242,7 +298,7 @@ export default function DashboardPage() {
               style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', fontSize: 14.5, fontWeight: 600, fontFamily: 'var(--sans)' }}
             />
           </div>
-          <Button icon="scissors" onClick={() => navigate('/')}>New link</Button>
+          <Button icon="scissors" full={isMobile} onClick={() => navigate('/')}>New link</Button>
         </div>
       </div>
 

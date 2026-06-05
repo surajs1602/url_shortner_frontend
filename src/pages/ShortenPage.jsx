@@ -9,8 +9,11 @@ import QR from '../components/QR.jsx';
 import { useToast } from '../components/ui/Toast.jsx';
 import { Store } from '../lib/api.js';
 import { isValidUrl, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { useBreakpoint } from '../lib/hooks.js';
 
-function Blobs() {
+// Decorative background blobs — hidden on mobile to prevent horizontal overflow.
+function Blobs({ hide }) {
+  if (hide) return null;
   return (
     <>
       <div style={{
@@ -28,13 +31,14 @@ function Blobs() {
 }
 
 function ResultCard({ result, onAgain }) {
-  const navigate = useNavigate();
-  const link = shortUrl(result.id);
+  const navigate     = useNavigate();
+  const { isMobile } = useBreakpoint();
+  const link         = shortUrl(result.id);
 
   return (
     <div style={{ animation: 'si-pop .26s cubic-bezier(.2,.9,.3,1.25)' }}>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
-        <h1 style={{ fontSize: 'clamp(34px,6vw,52px)', lineHeight: 1, fontWeight: 800, letterSpacing: '-0.04em', margin: 0 }}>
+        <h1 style={{ fontSize: 'clamp(30px,6vw,52px)', lineHeight: 1, fontWeight: 800, letterSpacing: '-0.04em', margin: 0 }}>
           Ta-da! 🎉
         </h1>
         <p style={{ color: 'var(--ink-soft)', fontWeight: 700, margin: '8px 0 0', fontSize: 15.5 }}>
@@ -42,20 +46,20 @@ function ResultCard({ result, onAgain }) {
         </p>
       </div>
 
-      <Card pad={24} style={{ boxShadow: '0 8px 0 var(--ink)' }}>
-        <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Card pad={isMobile ? 16 : 24} style={{ boxShadow: '0 8px 0 var(--ink)' }}>
+        <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start' }}>
           <div style={{ padding: 11, background: 'var(--cream)', border: '2.5px solid var(--ink)', borderRadius: 16 }}>
-            <QR text={link} px={5} />
+            <QR text={link} px={isMobile ? 4 : 5} />
           </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ flex: 1, minWidth: isMobile ? '100%' : 220, textAlign: isMobile ? 'center' : 'left' }}>
             <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 12, color: 'var(--coral)', letterSpacing: '0.04em' }}>
               YOUR SHORT LINK
             </div>
-            <div style={{ fontSize: 'clamp(20px,3.4vw,26px)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 6, wordBreak: 'break-all' }}>
+            <div style={{ fontSize: 'clamp(18px,3.4vw,26px)', fontWeight: 800, letterSpacing: '-0.02em', marginTop: 6, wordBreak: 'break-all' }}>
               {getBaseUrl().replace(/^https?:\/\//, '')}/
               <span style={{ color: 'var(--coral)' }}>{result.id}</span>
             </div>
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap', justifyContent: isMobile ? 'center' : 'flex-start' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--cream)', borderRadius: 99, padding: '5px 12px', fontWeight: 700, fontSize: 12.5, border: '2px solid var(--ink)' }}>
                 <Icon name="chart" size={13} stroke={2.4} />0 clicks
               </span>
@@ -76,7 +80,7 @@ function ResultCard({ result, onAgain }) {
         </div>
       </Card>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 22 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: isMobile ? 12 : 20, marginTop: 22, flexWrap: 'wrap' }}>
         <Button variant="blue" icon="scissors" onClick={onAgain}>Shorten another</Button>
         <Button variant="plain" iconRight="arrow" onClick={() => navigate('/dashboard')}>View all links</Button>
       </div>
@@ -108,8 +112,9 @@ export default function ShortenPage() {
   const [busy,      setBusy]      = useState(false);
   const [err,       setErr]       = useState('');
   const [result,    setResult]    = useState(null);
-  const inputRef = useRef(null);
-  const toast = useToast();
+  const inputRef         = useRef(null);
+  const toast            = useToast();
+  const { isMobile }     = useBreakpoint();
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -141,18 +146,19 @@ export default function ShortenPage() {
   return (
     <div style={{
       flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-      justifyContent: 'center', padding: '24px 24px 60px', position: 'relative',
+      justifyContent: 'center',
+      padding: isMobile ? '20px 16px 48px' : '24px 24px 60px',
+      position: 'relative', overflow: 'hidden',
     }}>
-      <Blobs />
+      <Blobs hide={isMobile} />
 
       <div style={{ position: 'relative', width: 660, maxWidth: '100%' }}>
         {!result ? (
           <>
-            {/* Hero heading */}
-            <div style={{ textAlign: 'center', marginBottom: 34 }}>
+            <div style={{ textAlign: 'center', marginBottom: isMobile ? 24 : 34 }}>
               <Pill />
               <h1 style={{
-                fontSize: 'clamp(40px, 7vw, 64px)', lineHeight: 0.95,
+                fontSize: 'clamp(36px, 7vw, 64px)', lineHeight: 0.95,
                 fontWeight: 800, letterSpacing: '-0.045em', margin: 0,
               }}>
                 Squish your<br />giant URLs <span style={{ color: 'var(--coral)' }}>↓</span>
@@ -163,7 +169,7 @@ export default function ShortenPage() {
             <div style={{
               display: 'flex', alignItems: 'center', gap: 10, background: '#fff',
               border: `2.5px solid ${err ? 'var(--coral)' : 'var(--ink)'}`,
-              borderRadius: 22, padding: '10px 10px 10px 20px',
+              borderRadius: 22, padding: isMobile ? '10px 10px 10px 14px' : '10px 10px 10px 20px',
               boxShadow: `0 7px 0 ${err ? 'var(--coral)' : 'var(--ink)'}`,
               transition: 'border-color .1s',
             }}>
@@ -176,16 +182,16 @@ export default function ShortenPage() {
                 placeholder="paste your monster link here…"
                 style={{
                   flex: 1, minWidth: 0, border: 'none', outline: 'none',
-                  background: 'transparent', fontSize: 16.5, fontWeight: 600,
-                  fontFamily: 'var(--sans)', color: 'var(--ink)',
+                  background: 'transparent', fontSize: isMobile ? 15 : 16.5,
+                  fontWeight: 600, fontFamily: 'var(--sans)', color: 'var(--ink)',
                 }}
               />
-              <Button size="lg" onClick={submit} disabled={busy} icon={busy ? undefined : 'scissors'}>
+              <Button size={isMobile ? 'md' : 'lg'} onClick={submit} disabled={busy} icon={busy ? undefined : 'scissors'}>
                 {busy ? 'Shrinking…' : 'Shrink it!'}
               </Button>
             </div>
 
-            {/* Sub-row: advanced toggle + hint/error */}
+            {/* Advanced toggle + hint/error */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, minHeight: 22 }}>
               <button
                 onClick={() => setAdv(a => !a)}
@@ -203,17 +209,18 @@ export default function ShortenPage() {
               </button>
               {err
                 ? <span style={{ color: 'var(--coral)', fontWeight: 700, fontSize: 13 }}>{err}</span>
-                : <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-faint)' }}>press ⏎ to shorten</span>
+                : !isMobile && <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-faint)' }}>press ⏎ to shorten</span>
               }
             </div>
 
-            {/* Advanced options */}
+            {/* Advanced options — single column on mobile */}
             {adv && (
               <div
                 id="advanced-options"
                 style={{
-                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14,
-                  marginTop: 16, animation: 'si-slide .18s ease',
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                  gap: 14, marginTop: 16, animation: 'si-slide .18s ease',
                 }}
               >
                 <Field label="Custom slug" hint="optional">

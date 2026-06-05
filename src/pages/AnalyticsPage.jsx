@@ -8,8 +8,8 @@ import CopyButton from '../components/ui/CopyButton.jsx';
 import QR from '../components/QR.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { shortUrl, fmtDate, fmtDateTime, relTime, hostOf } from '../lib/helpers.js';
-import { getBaseUrl } from '../lib/helpers.js';
+import { shortUrl, fmtDate, fmtDateTime, relTime, hostOf, getBaseUrl } from '../lib/helpers.js';
+import { useBreakpoint } from '../lib/hooks.js';
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 function StatTile({ label, value, icon, accent }) {
@@ -126,6 +126,7 @@ function Referrers({ history }) {
 
 // ── Visit list ────────────────────────────────────────────────────────────────
 function VisitList({ history }) {
+  const { isMobile } = useBreakpoint();
   const rows = history.slice().reverse().slice(0, 8);
 
   if (!rows.length) return (
@@ -141,19 +142,21 @@ function VisitList({ history }) {
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       {rows.map((v, i) => (
         <div key={i} style={{
-          display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0',
+          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', flexWrap: 'wrap',
           borderBottom: i < rows.length - 1 ? '1.5px solid rgba(42,35,32,.1)' : 'none',
         }}>
           <div style={{ width: 9, height: 9, borderRadius: 99, background: 'var(--mint)', flexShrink: 0 }} />
-          <span style={{ fontWeight: 700, fontSize: 13.5, width: 110, flexShrink: 0 }}>
+          <span style={{ fontWeight: 700, fontSize: 13, flexShrink: 0, width: isMobile ? 'auto' : 110 }}>
             {fmtDateTime(v.timestamp)}
           </span>
           <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-soft)', fontFamily: 'var(--mono)' }}>
             {v.userAgent ? `${device(v.userAgent)} · ${browser(v.userAgent)}` : 'Unknown'}
           </span>
-          <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-faint)', fontFamily: 'var(--mono)' }}>
-            {v.referrer ? hostOf(v.referrer) : 'direct'}
-          </span>
+          {!isMobile && (
+            <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 600, color: 'var(--ink-faint)', fontFamily: 'var(--mono)' }}>
+              {v.referrer ? hostOf(v.referrer) : 'direct'}
+            </span>
+          )}
         </div>
       ))}
     </div>
@@ -162,6 +165,7 @@ function VisitList({ history }) {
 
 // ── Analytics body ────────────────────────────────────────────────────────────
 function AnalyticsBody({ id, data, link, onQR }) {
+  const { isMobile, isTablet } = useBreakpoint();
   const history  = (data.history || []).slice().sort((a, b) => a.timestamp - b.timestamp);
   const total    = data.invoked != null ? data.invoked : history.length;
   const st       = data.isActive === false ? 'disabled' : (data.expiresAt && new Date(data.expiresAt) < new Date() ? 'expired' : 'active');
@@ -174,14 +178,16 @@ function AnalyticsBody({ id, data, link, onQR }) {
   return (
     <>
       {/* Header card */}
-      <Card pad={24} style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-          <div style={{ padding: 9, background: 'var(--cream)', border: '2.5px solid var(--ink)', borderRadius: 14, flexShrink: 0 }}>
-            <QR text={link} px={3.4} />
-          </div>
-          <div style={{ flex: 1, minWidth: 220 }}>
+      <Card pad={isMobile ? 16 : 24} style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: 20, flexWrap: 'wrap' }}>
+          {!isMobile && (
+            <div style={{ padding: 9, background: 'var(--cream)', border: '2.5px solid var(--ink)', borderRadius: 14, flexShrink: 0 }}>
+              <QR text={link} px={3.4} />
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: 'clamp(24px,4vw,32px)', fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>
+              <h1 style={{ fontSize: 'clamp(20px,4vw,32px)', fontWeight: 800, letterSpacing: '-0.03em', margin: 0, wordBreak: 'break-all' }}>
                 {base}/<span style={{ color: 'var(--coral)' }}>{id}</span>
               </h1>
               <StatusPill status={st} />
@@ -201,16 +207,16 @@ function AnalyticsBody({ id, data, link, onQR }) {
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
-            <CopyButton value={link} label="Copy" variant="ghost" />
+          <div style={{ display: 'flex', gap: 9, flexShrink: 0, width: isMobile ? '100%' : 'auto' }}>
+            <CopyButton value={link} label="Copy" variant="ghost" full={isMobile} />
             <Button variant="ghost" icon="qr" onClick={onQR} title="QR code" />
             <Button variant="ghost" icon="external" onClick={() => window.open(link, '_blank')} title="Open" />
           </div>
         </div>
       </Card>
 
-      {/* Stat tiles */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 14, marginBottom: 16 }}>
+      {/* Stat tiles — auto-fit handles mobile naturally */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
         <StatTile label="Total clicks"    value={total.toLocaleString()}   icon="chart" accent="var(--coral)" />
         <StatTile label="Unique visitors" value={uniques.toLocaleString()} icon="globe" accent="var(--blue)" />
         <StatTile label="Last 7 days"     value={last7.toLocaleString()}   icon="zap"   accent="var(--mint)" />
@@ -218,7 +224,7 @@ function AnalyticsBody({ id, data, link, onQR }) {
       </div>
 
       {/* Chart */}
-      <Card pad={24} style={{ marginBottom: 16 }}>
+      <Card pad={isMobile ? 16 : 24} style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Clicks over time</h3>
           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-soft)', fontWeight: 700 }}>last 14 days</span>
@@ -226,13 +232,13 @@ function AnalyticsBody({ id, data, link, onQR }) {
         <ClicksChart history={history} />
       </Card>
 
-      {/* Referrers + visits */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.4fr)', gap: 16, alignItems: 'start' }}>
-        <Card pad={24}>
+      {/* Referrers + visits — stacks to 1 col on tablet and below */}
+      <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : 'minmax(0,1fr) minmax(0,1.4fr)', gap: 16, alignItems: 'start' }}>
+        <Card pad={isMobile ? 16 : 24}>
           <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800 }}>Top referrers</h3>
           <Referrers history={history} />
         </Card>
-        <Card pad={24}>
+        <Card pad={isMobile ? 16 : 24}>
           <h3 style={{ margin: '0 0 16px', fontSize: 18, fontWeight: 800 }}>Recent visits</h3>
           <VisitList history={history} />
         </Card>
@@ -243,11 +249,12 @@ function AnalyticsBody({ id, data, link, onQR }) {
 
 // ── Analytics page ────────────────────────────────────────────────────────────
 export default function AnalyticsPage() {
-  const { id }    = useParams();
-  const navigate  = useNavigate();
-  const [data,    setData]  = useState(null);
-  const [error,   setError] = useState('');
-  const [qr,      setQr]    = useState(false);
+  const { id }       = useParams();
+  const navigate     = useNavigate();
+  const { isMobile } = useBreakpoint();
+  const [data,  setData]  = useState(null);
+  const [error, setError] = useState('');
+  const [qr,    setQr]    = useState(false);
   const link = shortUrl(id);
 
   useEffect(() => {
@@ -260,7 +267,7 @@ export default function AnalyticsPage() {
   }, [id]);
 
   return (
-    <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', padding: '12px 32px 64px', boxSizing: 'border-box' }}>
+    <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', padding: isMobile ? '12px 16px 48px' : '12px 32px 64px', boxSizing: 'border-box' }}>
       <button
         onClick={() => navigate('/dashboard')}
         style={{
