@@ -8,7 +8,7 @@ import { useToast } from '../components/ui/Toast.jsx';
 import ConfirmDialog from '../components/modals/ConfirmDialog.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { statusOf, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { statusOf, fmtDate, getBaseUrl } from '../lib/helpers.js';
 import { useBreakpoint } from '../lib/hooks.js';
 
 // Strips protocol/www and truncates long paths so URLs read cleanly in the card.
@@ -105,8 +105,8 @@ function IconBtn({ name, title, onClick, copyValue, accent, danger }) {
 function LinkCard({ link, onAnalytics, onQR, onDelete }) {
   const clicks                 = link.visitHistory ? link.visitHistory.length : 0;
   const st                     = statusOf(link);
-  const full                   = shortUrl(link.shortId);
-  const base                   = getBaseUrl().replace(/^https?:\/\//, '');
+  const full = `${getBaseUrl()}/${link.shortId}`;
+  const base = getBaseUrl().replace(/^https?:\/\//, '');
   const { isMobile, isTablet } = useBreakpoint();
 
   // Actions are the same at every breakpoint.
