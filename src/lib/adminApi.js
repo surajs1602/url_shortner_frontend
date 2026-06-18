@@ -5,7 +5,10 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizeError } from './apiClient.js';
 
-const BFF_BASE = import.meta.env.VITE_BFF_BASE || '/bff';
+// Call the Vercel functions at their NATIVE path. A catch-all ([...path].js)
+// natively matches any depth here — unlike a /bff → /api/bff rewrite, which only
+// forwards a single dynamic segment and 404s on /admin/urls/:id and deeper.
+const BFF_BASE = import.meta.env.VITE_BFF_BASE || '/api/bff';
 
 // Lets the auth provider react to an expired/invalid session from anywhere.
 let onUnauthorized = () => {};
