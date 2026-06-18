@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
@@ -6,9 +6,13 @@ import Icon from '../components/ui/Icon.jsx';
 import CopyButton from '../components/ui/CopyButton.jsx';
 import { Field, inputStyle } from '../components/ui/Field.jsx';
 import QR from '../components/QR.jsx';
+import Honeypot from '../components/Honeypot.jsx';
+import Captcha, { captchaEnabled } from '../components/Captcha.jsx';
 import { useToast } from '../components/ui/Toast.jsx';
 import { Store } from '../lib/api.js';
-import { isValidUrl, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { validateUrlClient, publicLink, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { explainBlock } from '../lib/blockReasons.js';
+import { MAX_URL_LENGTH } from '../config/index.js';
 import { useBreakpoint } from '../lib/hooks.js';
 
 // Decorative background blobs — hidden on mobile to prevent horizontal overflow.
@@ -33,7 +37,7 @@ function Blobs({ hide }) {
 function ResultCard({ result, onAgain }) {
   const navigate     = useNavigate();
   const { isMobile } = useBreakpoint();
-  const link         = shortUrl(result.id);
+  const link         = publicLink(result.id);
 
   return (
     <div style={{ animation: 'si-pop .26s cubic-bezier(.2,.9,.3,1.25)' }}>
@@ -72,6 +76,11 @@ function ResultCard({ result, onAgain }) {
                   </span>
               }
             </div>
+            {/* Links are safety-checked by the backend before each redirect. */}
+            <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, color: 'var(--ink-faint)', fontFamily: 'var(--mono)' }}
+                 title="The backend verifies the destination is reachable and safe before redirecting.">
+              🛡 safety-checked before redirect
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
@@ -84,6 +93,21 @@ function ResultCard({ result, onAgain }) {
         <Button variant="blue" icon="scissors" onClick={onAgain}>Shorten another</Button>
         <Button variant="plain" iconRight="arrow" onClick={() => navigate('/dashboard')}>View all links</Button>
       </div>
+    </div>
+  );
+}
+
+// Shown when the backend accepts the request but returns no link (honeypot drop).
+function GenericSuccess({ onAgain }) {
+  return (
+    <div style={{ textAlign: 'center', animation: 'si-pop .26s cubic-bezier(.2,.9,.3,1.25)' }}>
+      <h1 style={{ fontSize: 'clamp(28px,6vw,46px)', fontWeight: 800, letterSpacing: '-0.04em', margin: 0 }}>
+        All done ✓
+      </h1>
+      <p style={{ color: 'var(--ink-soft)', fontWeight: 700, margin: '10px 0 22px', fontSize: 15.5 }}>
+        Your request was received.
+      </p>
+      <Button variant="blue" icon="scissors" onClick={onAgain}>Shorten another</Button>
     </div>
   );
 }
@@ -111,37 +135,86 @@ export default function ShortenPage() {
   const [expiresAt, setExpiresAt] = useState('');
   const [busy,      setBusy]      = useState(false);
   const [err,       setErr]       = useState('');
+  const [block,     setBlock]     = useState(null); // { text, chain? } from a blockReason
+  const [cooldown,  setCooldown]  = useState(0);     // 429 retry countdown (seconds)
   const [result,    setResult]    = useState(null);
+  const [done,      setDone]      = useState(false);  // generic (no-link) success
+  const [website,   setWebsite]   = useState('');     // honeypot — must stay empty
+  const [token,     setToken]     = useState('');     // captcha token
   const inputRef         = useRef(null);
   const toast            = useToast();
   const { isMobile }     = useBreakpoint();
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  // Tick down the rate-limit cooldown once a 429 sets it.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown(c => Math.max(0, c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  const onToken = useCallback(tok => setToken(tok), []);
+
   const submit = async () => {
+    if (cooldown > 0) return;
     let u = url.trim();
-    if (!u) { setErr('Paste a URL first.'); inputRef.current?.focus(); return; }
-    if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
-    if (!isValidUrl(u)) { setErr("That doesn't look like a valid URL."); return; }
-    setErr('');
-    setBusy(true);
+    if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+    const check = validateUrlClient(u, MAX_URL_LENGTH);
+    if (!check.ok) { setErr(check.message); setBlock(null); inputRef.current?.focus(); return; }
+    if (captchaEnabled() && !token) { setErr('Please complete the CAPTCHA to continue.'); return; }
+
+    setErr(''); setBlock(null); setBusy(true);
     try {
-      const res = await Store.create({ url: u, slug: slug.trim() || undefined, expiresAt: expiresAt || undefined });
-      setResult({ id: res.shortId, url: u, expiresAt: expiresAt || null });
-      toast('Short link created');
+      const res = await Store.create({
+        url: u,
+        slug: slug.trim() || undefined,
+        expiresAt: expiresAt || undefined,
+        captchaToken: token || undefined,
+        website,
+      });
+      // 200 with no shortId = honeypot/silent drop → show generic success.
+      if (res && res.shortId) {
+        setResult({ id: res.shortId, url: u, expiresAt: expiresAt || null });
+        toast('Short link created');
+      } else {
+        setDone(true);
+      }
     } catch (e) {
-      setErr(e.message || 'Something went wrong.');
-      if (e.status === 409) toast('That slug is taken', 'err');
+      handleError(e);
     } finally {
       setBusy(false);
     }
   };
 
+  // Map normalized API errors onto the right UI affordance.
+  const handleError = (e) => {
+    const status = e.status;
+    if (status === 429) {
+      const secs = e.retryAfterSeconds || 60;
+      setCooldown(secs);
+      setErr(`Too many requests. Try again in ${secs}s.`);
+      toast('Rate limited — please slow down', 'err');
+      return;
+    }
+    if (status === 401) { setErr('This service isn’t accepting requests right now (auth error).'); return; }
+    if (status === 409) { setErr('That custom slug is already taken — pick another.'); toast('Slug taken', 'err'); return; }
+    if (status === 400) {
+      setErr(e.message || 'We couldn’t shorten that link.');
+      const text = explainBlock(e.code);
+      if (text || e.chain) setBlock({ text, chain: e.chain });
+      return;
+    }
+    setErr(e.message || 'Something went wrong.');
+  };
+
   const reset = () => {
     setUrl(''); setSlug(''); setExpiresAt('');
-    setResult(null); setErr(''); setAdv(false);
+    setResult(null); setDone(false); setErr(''); setBlock(null); setAdv(false); setToken('');
     setTimeout(() => inputRef.current?.focus(), 50);
   };
+
+  const disabled = busy || cooldown > 0;
 
   return (
     <div style={{
@@ -153,7 +226,11 @@ export default function ShortenPage() {
       <Blobs hide={isMobile} />
 
       <div style={{ position: 'relative', width: 660, maxWidth: '100%' }}>
-        {!result ? (
+        {result ? (
+          <ResultCard result={result} onAgain={reset} />
+        ) : done ? (
+          <GenericSuccess onAgain={reset} />
+        ) : (
           <>
             <div style={{ textAlign: 'center', marginBottom: isMobile ? 24 : 34 }}>
               <Pill />
@@ -177,7 +254,7 @@ export default function ShortenPage() {
               <input
                 ref={inputRef}
                 value={url}
-                onChange={e => { setUrl(e.target.value); setErr(''); }}
+                onChange={e => { setUrl(e.target.value); setErr(''); setBlock(null); }}
                 onKeyDown={e => { if (e.key === 'Enter') submit(); }}
                 placeholder="paste your monster link here…"
                 style={{
@@ -186,10 +263,13 @@ export default function ShortenPage() {
                   fontWeight: 600, fontFamily: 'var(--sans)', color: 'var(--ink)',
                 }}
               />
-              <Button size={isMobile ? 'md' : 'lg'} onClick={submit} disabled={busy} icon={busy ? undefined : 'scissors'}>
-                {busy ? 'Shrinking…' : 'Shrink it!'}
+              <Button size={isMobile ? 'md' : 'lg'} onClick={submit} disabled={disabled} icon={busy ? undefined : 'scissors'}>
+                {busy ? 'Shrinking…' : cooldown > 0 ? `Wait ${cooldown}s` : 'Shrink it!'}
               </Button>
             </div>
+
+            {/* Honeypot — visually hidden, bots fill it and get dropped. */}
+            <Honeypot value={website} onChange={setWebsite} />
 
             {/* Advanced toggle + hint/error */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, minHeight: 22 }}>
@@ -208,10 +288,33 @@ export default function ShortenPage() {
                 {adv ? 'Hide options' : 'Custom slug & expiry'}
               </button>
               {err
-                ? <span style={{ color: 'var(--coral)', fontWeight: 700, fontSize: 13 }}>{err}</span>
+                ? <span style={{ color: 'var(--coral)', fontWeight: 700, fontSize: 13, textAlign: 'right' }}>{err}</span>
                 : !isMobile && <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--ink-faint)' }}>press ⏎ to shorten</span>
               }
             </div>
+
+            {/* blockReason explanation + resolved redirect chain */}
+            {block && (
+              <Card style={{ marginTop: 14, borderColor: 'var(--coral)', boxShadow: '0 5px 0 var(--coral)' }}>
+                {block.text && (
+                  <div style={{ display: 'flex', gap: 9, fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>
+                    <Icon name="x" size={17} stroke={2.6} style={{ color: 'var(--coral)', flexShrink: 0, marginTop: 1 }} />
+                    <span>{block.text}</span>
+                  </div>
+                )}
+                {block.chain && block.chain.length > 0 && (
+                  <div style={{ marginTop: block.text ? 12 : 0 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--ink-soft)', marginBottom: 6 }}>Redirect chain</div>
+                    <ol style={{ margin: 0, paddingLeft: 18, fontFamily: 'var(--mono)', fontSize: 12.5, color: 'var(--ink-soft)', wordBreak: 'break-all' }}>
+                      {block.chain.map((c, i) => <li key={i} style={{ marginBottom: 3 }}>{c}</li>)}
+                    </ol>
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* CAPTCHA — renders only when VITE_TURNSTILE_SITE_KEY is set */}
+            <Captcha onToken={onToken} />
 
             {/* Advanced options — single column on mobile */}
             {adv && (
@@ -249,8 +352,6 @@ export default function ShortenPage() {
               </div>
             )}
           </>
-        ) : (
-          <ResultCard result={result} onAgain={reset} />
         )}
       </div>
     </div>

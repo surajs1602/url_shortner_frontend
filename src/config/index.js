@@ -30,3 +30,11 @@ export const HEALTH_PATH = '/health';
 // API paths
 export const API_URL_PATH       = '/api/url';
 export const API_ANALYTICS_PATH = '/api/url/analytics';
+export const REPORT_PATH        = '/report';
+
+// CAPTCHA — Cloudflare Turnstile site key (public, safe to ship).
+// Leave empty to disable the widget entirely (feature-flagged).
+export const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+
+// Max URL length accepted client-side — mirrors the backend's limit.
+export const MAX_URL_LENGTH = 2048;

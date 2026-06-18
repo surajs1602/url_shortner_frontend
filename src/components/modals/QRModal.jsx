@@ -1,10 +1,10 @@
 import Modal from './Modal.jsx';
 import QR from '../QR.jsx';
 import CopyButton from '../ui/CopyButton.jsx';
-import { shortUrl } from '../../lib/helpers.js';
+import { publicLink } from '../../lib/helpers.js';
 
 export default function QRModal({ id, onClose }) {
-  const url = shortUrl(id);
+  const url = publicLink(id);
 
   return (
     <Modal title="QR code" onClose={onClose} width={360}>

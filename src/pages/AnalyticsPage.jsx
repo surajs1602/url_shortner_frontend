@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import Card from '../components/ui/Card.jsx';
 import Button from '../components/ui/Button.jsx';
 import Icon from '../components/ui/Icon.jsx';
@@ -8,7 +8,7 @@ import CopyButton from '../components/ui/CopyButton.jsx';
 import QR from '../components/QR.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { shortUrl, fmtDate, fmtDateTime, relTime, hostOf, getBaseUrl } from '../lib/helpers.js';
+import { publicLink, fmtDate, fmtDateTime, relTime, hostOf, getBaseUrl } from '../lib/helpers.js';
 import { useBreakpoint } from '../lib/hooks.js';
 
 // ── Stat tile ─────────────────────────────────────────────────────────────────
@@ -206,6 +206,19 @@ function AnalyticsBody({ id, data, link, onQR }) {
                 Expires {fmtDate(data.expiresAt)}
               </div>
             )}
+            {/* Why a link is disabled, if the backend told us. */}
+            {data.isActive === false && data.disabledReason && (
+              <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: 'var(--coral)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Icon name="x" size={14} stroke={2.6} style={{ flexShrink: 0 }} />
+                {data.disabledReason}
+              </div>
+            )}
+            {/* Abuse-report count, only when there's something to show. */}
+            {data.abuseReportCount > 0 && (
+              <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: 'var(--amber)' }}>
+                ⚠ {data.abuseReportCount} abuse report{data.abuseReportCount !== 1 ? 's' : ''} on file
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 9, flexShrink: 0, width: isMobile ? '100%' : 'auto' }}>
             <CopyButton value={link} label="Copy" variant="ghost" full={isMobile} />
@@ -255,7 +268,7 @@ export default function AnalyticsPage() {
   const [data,  setData]  = useState(null);
   const [error, setError] = useState('');
   const [qr,    setQr]    = useState(false);
-  const link = shortUrl(id);
+  const link = publicLink(id);
 
   useEffect(() => {
     let alive = true;
@@ -268,17 +281,25 @@ export default function AnalyticsPage() {
 
   return (
     <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', padding: isMobile ? '12px 16px 48px' : '12px 32px 64px', boxSizing: 'border-box' }}>
-      <button
-        onClick={() => navigate('/dashboard')}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          background: 'none', border: 'none', cursor: 'pointer',
-          fontWeight: 800, fontSize: 14, color: 'var(--ink-soft)',
-          fontFamily: 'var(--sans)', marginBottom: 18, padding: 0,
-        }}
-      >
-        <Icon name="back" size={17} stroke={2.6} />Back to dashboard
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12 }}>
+        <button
+          onClick={() => navigate('/dashboard')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontWeight: 800, fontSize: 14, color: 'var(--ink-soft)',
+            fontFamily: 'var(--sans)', padding: 0,
+          }}
+        >
+          <Icon name="back" size={17} stroke={2.6} />Back to dashboard
+        </button>
+        <Link
+          to={`/report/${id}`}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--ink-soft)', fontWeight: 700, fontSize: 13, textDecoration: 'none' }}
+        >
+          <Icon name="x" size={14} stroke={2.6} />Report this link
+        </Link>
+      </div>
 
       {error ? (
         <Card style={{ borderColor: 'var(--coral)', boxShadow: '0 6px 0 var(--coral)' }}>
