@@ -8,7 +8,7 @@ import { useToast } from '../components/ui/Toast.jsx';
 import ConfirmDialog from '../components/modals/ConfirmDialog.jsx';
 import QRModal from '../components/modals/QRModal.jsx';
 import { Store } from '../lib/api.js';
-import { statusOf, shortUrl, fmtDate, getBaseUrl } from '../lib/helpers.js';
+import { statusOf, fmtDate, getBaseUrl, publicLink } from '../lib/helpers.js';
 import { useBreakpoint } from '../lib/hooks.js';
 
 // Strips protocol/www and truncates long paths so URLs read cleanly in the card.
@@ -105,8 +105,8 @@ function IconBtn({ name, title, onClick, copyValue, accent, danger }) {
 function LinkCard({ link, onAnalytics, onQR, onDelete }) {
   const clicks                 = link.visitHistory ? link.visitHistory.length : 0;
   const st                     = statusOf(link);
-  const full                   = shortUrl(link.shortId);
-  const base                   = getBaseUrl().replace(/^https?:\/\//, '');
+  const full = publicLink(link.shortId);
+  const base = getBaseUrl().replace(/^https?:\/\//, '');
   const { isMobile, isTablet } = useBreakpoint();
 
   // Actions are the same at every breakpoint.
@@ -338,7 +338,7 @@ export default function DashboardPage() {
       {confirm && (
         <ConfirmDialog
           title="Delete this link?"
-          body={`${shortUrl(confirm.shortId)} will stop working immediately and its analytics will be lost. This can't be undone.`}
+          body={`${publicLink(confirm.shortId)} will stop working immediately and its analytics will be lost. This can't be undone.`}
           onConfirm={() => del(confirm.shortId)}
           onClose={() => setConfirm(null)}
         />

@@ -1,41 +1,11 @@
 import {
   API_URL_PATH,
   API_ANALYTICS_PATH,
-  HEALTH_PATH,
+  REPORT_PATH,
   MOCK_STORAGE_KEY,
 } from '../config/index.js';
 import { getCfg, isLive, getBaseUrl, genId, isValidUrl, wait } from './helpers.js';
-
-// ─── API fetch ───────────────────────────────────────────────────────────────
-
-async function apiFetch(path, opts = {}) {
-  const c = getCfg();
-  const base = getBaseUrl();
-  const res = await fetch(base + path, {
-    method: opts.method || 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': c.apiKey || '',
-      ...(opts.headers || {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-
-  let data = null;
-  // Log parse failures so they surface in devtools without breaking the error-status flow.
-  try { data = await res.json(); } catch (e) { console.warn('[ShortIt] Non-JSON response body:', e.message); }
-
-  if (!res.ok) {
-    const msg =
-      res.status === 429
-        ? 'Rate limit hit — try again in a few minutes'
-        : res.status === 401
-          ? 'Invalid API key — check your Settings'
-          : (data && (data.err || data.error || data.message)) || `Request failed (${res.status})`;
-    throw { status: res.status, message: msg, data };
-  }
-  return data;
-}
+import { publicFetch, openFetch } from './apiClient.js';
 
 // ─── Demo store ──────────────────────────────────────────────────────────────
 
@@ -127,20 +97,28 @@ export const Store = {
   isLive,
 
   async list() {
-    if (isLive()) return await apiFetch(API_URL_PATH);
+    if (isLive()) return await publicFetch(API_URL_PATH);
     await wait(280);
     return [...mockAll()].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   },
 
-  async create({ url, slug, expiresAt }) {
-    if (!isValidUrl(url)) throw { status: 400, message: 'URL must start with http:// or https://' };
+  /**
+   * Create a short link.
+   * @param {{ url: string, slug?: string, expiresAt?: string, captchaToken?: string, website?: string }} input
+   * @returns {Promise<import('./types.js').CreateUrlResponse>}
+   */
+  async create({ url, slug, expiresAt, captchaToken, website }) {
+    if (!isValidUrl(url)) throw { status: 400, message: 'URL must start with http:// or https://', code: 'validation' };
     if (isLive()) {
-      const body = { url };
+      const body = { url, website: website || '' };
       if (slug) body.slug = slug;
       if (expiresAt) body.expiresAt = expiresAt;
-      return await apiFetch(API_URL_PATH, { method: 'POST', body });
+      if (captchaToken) body.captchaToken = captchaToken;
+      return await publicFetch(API_URL_PATH, { method: 'POST', body });
     }
     await wait(420);
+    // Demo: a filled honeypot mimics the backend silently dropping bot traffic.
+    if (website) return { status: 'Success' };
     const all = mockAll();
     const id = slug || genId(8);
     if (slug && all.some(u => u.shortId === slug)) {
@@ -160,23 +138,50 @@ export const Store = {
     return { status: 'Success', shortId: id };
   },
 
+  /**
+   * @param {string} id
+   * @returns {Promise<import('./types.js').AnalyticsResponse>}
+   */
   async analytics(id) {
-    if (isLive()) return await apiFetch(`${API_ANALYTICS_PATH}/${encodeURIComponent(id)}`);
+    if (isLive()) return await publicFetch(`${API_ANALYTICS_PATH}/${encodeURIComponent(id)}`);
     await wait(260);
     const u = mockAll().find(x => x.shortId === id);
     if (!u) throw { status: 404, message: 'URL not found' };
     return {
       id: u.shortId,
       url: u.redirectUrl,
+      submittedUrl: u.redirectUrl,
       isActive: u.isActive,
+      disabledReason: u.isActive === false ? 'Paused by administrator' : null,
+      abuseReportCount: u.abuseReportCount || 0,
       expiresAt: u.expiresAt,
       invoked: u.visitHistory.length,
       history: u.visitHistory,
     };
   },
 
+  /**
+   * File a public abuse report (no auth).
+   * @param {{ shortId: string, reason: string, details?: string, captchaToken?: string, website?: string }} input
+   * @returns {Promise<import('./types.js').ReportResponse>}
+   */
+  async report({ shortId, reason, details, captchaToken, website }) {
+    if (isLive()) {
+      const body = { shortId, reason, website: website || '' };
+      if (details) body.details = details;
+      if (captchaToken) body.captchaToken = captchaToken;
+      return await openFetch(REPORT_PATH, { method: 'POST', body });
+    }
+    await wait(380);
+    if (website) return { status: 'Success', message: 'Thanks — your report was received.' };
+    if (!mockAll().some(u => u.shortId === shortId)) {
+      throw { status: 404, message: 'We couldn’t find a link with that ID.' };
+    }
+    return { status: 'Success', message: 'Thanks — your report was received.' };
+  },
+
   async remove(id) {
-    if (isLive()) return await apiFetch(`${API_URL_PATH}/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (isLive()) return await publicFetch(`${API_URL_PATH}/${encodeURIComponent(id)}`, { method: 'DELETE' });
     await wait(240);
     const all = mockAll().filter(x => x.shortId !== id);
     mockSave(all);

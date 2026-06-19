@@ -5,6 +5,9 @@ node_modules/
 dist/
 dist-ssr/
 
+# Vercel
+.vercel
+
 # Environment files — never commit real secrets
 .env
 .env.local
@@ -26,3 +29,5 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+.vercel
