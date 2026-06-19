@@ -1,23 +1,24 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin service module — every admin endpoint, centralized.
-// All calls go through the BFF (/bff/admin/*), which injects the x-admin-key
-// server-side. The browser only ever sends its session cookie.
+// Calls the BFF (Vercel functions). The browser only sends its session cookie;
+// the server-side function injects the x-admin-key.
+//
+// Admin sub-paths ride in a single `call` query param against the fixed-path
+// proxy /api/bff/admin — single-segment routes resolve reliably on Vercel,
+// unlike a deep [...path] catch-all (which 404'd past one level).
 // ─────────────────────────────────────────────────────────────────────────────
 import { normalizeError } from './apiClient.js';
 
-// Call the Vercel functions at their NATIVE path. A catch-all ([...path].js)
-// natively matches any depth here — unlike a /bff → /api/bff rewrite, which only
-// forwards a single dynamic segment and 404s on /admin/urls/:id and deeper.
 const BFF_BASE = import.meta.env.VITE_BFF_BASE || '/api/bff';
 
 // Lets the auth provider react to an expired/invalid session from anywhere.
 let onUnauthorized = () => {};
 export function setUnauthorizedHandler(fn) { onUnauthorized = fn || (() => {}); }
 
-async function bff(path, { method = 'GET', body } = {}) {
+async function call(url, { method = 'GET', body } = {}) {
   let res;
   try {
-    res = await fetch(`${BFF_BASE}${path}`, {
+    res = await fetch(url, {
       method,
       credentials: 'same-origin',
       headers: body != null ? { 'Content-Type': 'application/json' } : undefined,
@@ -35,6 +36,11 @@ async function bff(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+// Forward an admin sub-path (with its own querystring) through the proxy.
+function admin(subpath, opts) {
+  return call(`${BFF_BASE}/admin?call=${encodeURIComponent(subpath)}`, opts);
+}
+
 // Build a querystring from defined, non-empty values only.
 function qs(params) {
   const u = new URLSearchParams();
@@ -46,33 +52,33 @@ function qs(params) {
   return s ? `?${s}` : '';
 }
 
-// ── Auth ────────────────────────────────────────────────────────────────────
+// ── Auth (single-segment routes — no proxying needed) ──────────────────────────
 export const adminAuth = {
-  login:   (password) => bff('/login',  { method: 'POST', body: { password } }),
-  logout:  ()         => bff('/logout', { method: 'POST' }),
-  session: ()         => bff('/session'),
+  login:   (password) => call(`${BFF_BASE}/login`,  { method: 'POST', body: { password } }),
+  logout:  ()         => call(`${BFF_BASE}/logout`, { method: 'POST' }),
+  session: ()         => call(`${BFF_BASE}/session`),
 };
 
 // ── Admin endpoints ───────────────────────────────────────────────────────────
 export const adminApi = {
   /** @returns {Promise<import('./types.js').UrlDoc[]>} */
   listUrls:    ({ domain, blocked, reachable, limit } = {}) =>
-                 bff(`/admin/urls${qs({ domain, blocked, reachable, limit })}`),
+                 admin(`urls${qs({ domain, blocked, reachable, limit })}`),
   /** @returns {Promise<import('./types.js').UrlDoc>} */
-  getUrl:      (id) => bff(`/admin/urls/${encodeURIComponent(id)}`),
-  blockedUrls: () => bff('/admin/urls/blocked'),
+  getUrl:      (id) => admin(`urls/${encodeURIComponent(id)}`),
+  blockedUrls: () => admin('urls/blocked'),
 
-  disableUrl:  (id, reason) => bff(`/admin/urls/${encodeURIComponent(id)}/disable`, { method: 'POST', body: { reason } }),
-  enableUrl:   (id)         => bff(`/admin/urls/${encodeURIComponent(id)}/enable`,  { method: 'POST' }),
-  deleteUrl:   (id)         => bff(`/admin/urls/${encodeURIComponent(id)}`,         { method: 'DELETE' }),
+  disableUrl:  (id, reason) => admin(`urls/${encodeURIComponent(id)}/disable`, { method: 'POST', body: { reason } }),
+  enableUrl:   (id)         => admin(`urls/${encodeURIComponent(id)}/enable`,  { method: 'POST' }),
+  deleteUrl:   (id)         => admin(`urls/${encodeURIComponent(id)}`,         { method: 'DELETE' }),
 
-  abuseReports: (status) => bff(`/admin/abuse-reports${qs({ status })}`),
+  abuseReports: (status) => admin(`abuse-reports${qs({ status })}`),
 
-  bannedIps:  () => bff('/admin/banned-ips'),
-  banIp:      (ip, reason) => bff('/admin/banned-ips', { method: 'POST', body: { ip, reason } }),
-  unbanIp:    (ip)         => bff(`/admin/banned-ips/${encodeURIComponent(ip)}`, { method: 'DELETE' }),
+  bannedIps:  () => admin('banned-ips'),
+  banIp:      (ip, reason) => admin('banned-ips', { method: 'POST', body: { ip, reason } }),
+  unbanIp:    (ip)         => admin(`banned-ips/${encodeURIComponent(ip)}`, { method: 'DELETE' }),
 
-  healthCheck: (batchSize) => bff('/admin/health-check', { method: 'POST', body: { batchSize } }),
+  healthCheck: (batchSize) => admin('health-check', { method: 'POST', body: { batchSize } }),
 
-  logs: ({ limit, level } = {}) => bff(`/admin/logs${qs({ limit, level })}`),
+  logs: ({ limit, level } = {}) => admin(`logs${qs({ limit, level })}`),
 };

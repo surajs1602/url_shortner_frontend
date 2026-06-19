@@ -1,27 +1,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Admin BFF proxy:  /bff/admin/*  →  ${API_BASE_URL}/admin/*
+// Admin BFF proxy:  /api/bff/admin?call=<subpath>  →  ${API_BASE_URL}/admin/<subpath>
+// Single fixed-path function (not a catch-all): Vercel resolves single-segment
+// routes reliably, whereas [...path] only matched one level here. The admin
+// sub-path (with its own querystring) rides along in the `call` param.
 // Verifies the operator session, then forwards with the server-only x-admin-key.
-// The admin key never reaches the browser.
 // ─────────────────────────────────────────────────────────────────────────────
-import { isAuthed, readBody } from '../_session.js';
-
-// Everything after ".../bff/admin" — the leading "/" and querystring are kept
-// verbatim. Falls back to the catch-all param if the anchor isn't present.
-function upstreamTail(req) {
-  const raw = req.url || '';
-  const i = raw.indexOf('bff/admin');
-  if (i >= 0) return raw.slice(i + 'bff/admin'.length);
-
-  const segs = Array.isArray(req.query.path) ? req.query.path : (req.query.path ? [req.query.path] : []);
-  const q = new URLSearchParams();
-  for (const [k, v] of Object.entries(req.query)) {
-    if (k === 'path') continue;
-    if (Array.isArray(v)) v.forEach(x => q.append(k, x));
-    else if (v != null)   q.set(k, v);
-  }
-  const qs = q.toString();
-  return `/${segs.join('/')}${qs ? `?${qs}` : ''}`;
-}
+import { isAuthed, readBody } from './_session.js';
 
 export default async function handler(req, res) {
   if (!isAuthed(req)) return res.status(401).json({ error: 'Not authenticated.' });
@@ -31,11 +15,9 @@ export default async function handler(req, res) {
   if (!base)     return res.status(503).json({ error: 'Backend URL is not configured on the server.' });
   if (!adminKey) return res.status(503).json({ error: 'Admin API is not configured.' });
 
-  // Derive the sub-path (and querystring) straight from the request URL. Anchoring
-  // on "bff/admin" is deterministic — unlike req.query.path, which the rewrite's
-  // own :proxyPath capture can pollute and turn /admin/urls into /admin/urls/:id.
-  const tail = upstreamTail(req);
-  const url  = `${base}/admin${tail}`;
+  // `call` arrives fully decoded, e.g. "urls/abc/disable" or "urls?domain=x&limit=25".
+  const call = (typeof req.query.call === 'string' ? req.query.call : '').replace(/^\/+/, '');
+  const url  = `${base}/admin/${call}`;
 
   const init = { method: req.method, headers: { 'x-admin-key': adminKey } };
   if (!['GET', 'HEAD'].includes(req.method)) {
